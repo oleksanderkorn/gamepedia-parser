@@ -4,6 +4,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 
 /**
  * Author: Oleksandr Korniienko
@@ -11,15 +12,16 @@ import java.io.IOException;
  */
 public class Parser {
 
-    private final static String BASE_URL = "http://dota2.gamepedia.com";
+    private static final String BASE_URL = "http://dota2.gamepedia.com";
     private static final String DOTA_2_WIKI = "/Dota_2_Wiki";
-    private final static String STRATEGY_TAB_PATH = "/Guide";
-    private final static String GAMEPLAY_SECTION_ID = "Gameplay";
-    private final static String TIPS_SECTION_ID = "Tips_.26_Tactics";
-    private final static String ITEMS_SECTION_ID = "Items";
+    private static final String STRATEGY_TAB_PATH = "/Guide";
+    private static final String GAME_PLAY_SECTION_ID = "Gameplay";
+    private static final String TIPS_TACTICS_SECTION_ID = "Tips_.26_Tactics";
+    private static final String TIPS_SECTION_ID = "Tips";
+    private static final String ITEMS_SECTION_ID = "Items";
     private static final String HERO_ENTRY = ".heroentry";
-    private final static String H2 = "<h2>%s</h2>";
-    private final static String H3 = "<h3>%s</h3>";
+    private static final String H2 = "<h2>%s</h2>";
+    private static final String H3 = "<h3>%s</h3>";
     private static final String BR = "<br/>";
     private static final String HEADER = "header";
     private static final String A = "a";
@@ -40,8 +42,6 @@ public class Parser {
                 sb.append(heroTips);
                 sb.append(BR);
                 sb.append(BR);
-                sb.append(BR);
-                sb.append(BR);
             }
             System.out.println(sb.toString());
         } catch (IOException e) {
@@ -52,10 +52,10 @@ public class Parser {
     private static String parseHeroLink(String heroLink) {
         StringBuilder sb = new StringBuilder();
         try {
-            Document heroPage = Jsoup.connect(heroLink).get();
-            sb.append(parseGameplay(heroPage));
-            sb.append(parseTips(heroPage));
-            sb.append(parseItems(heroPage));
+            Document heroPage = Jsoup.connect(URLDecoder.decode(heroLink, "UTF-8")).get();
+            sb.append(parseGamePlaySection(heroPage));
+            sb.append(parseTipsSection(heroPage));
+            sb.append(parseItemsSection(heroPage));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -63,12 +63,12 @@ public class Parser {
         return sb.toString();
     }
 
-    private static String parseGameplay(Document heroPage) {
-        Element gameplaySection = heroPage.getElementById(GAMEPLAY_SECTION_ID);
+    private static String parseGamePlaySection(Document heroPage) {
+        Element gamePlaySection = heroPage.getElementById(GAME_PLAY_SECTION_ID);
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format(H2, gameplaySection.text()));
+        sb.append(String.format(H2, gamePlaySection.text()));
 
-        Element gamePlayTable = gameplaySection.parent().nextElementSibling();
+        Element gamePlayTable = gamePlaySection.parent().nextElementSibling();
         Element playStyle = gamePlayTable.getElementsByClass(HEADER).get(0);
         sb.append(String.format(H3, playStyle.text()));
 
@@ -84,26 +84,31 @@ public class Parser {
             sb.append(prosConsLabels.get(i).parent().html());
             sb.append(BR);
             Element list = prosConsTexts.get(i);
-            sb.append(parseList(list));
+            sb.append(parseListToTixtWithLineBreaks(list));
         }
         return sb.toString();
     }
 
-    private static String parseTips(Document heroPage) {
+    private static String parseTipsSection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
-        Element tipsSection = heroPage.getElementById(TIPS_SECTION_ID);
-        sb.append(String.format(H2, tipsSection.text()));
+        Element tipsSection = heroPage.getElementById(TIPS_TACTICS_SECTION_ID) != null ? heroPage.getElementById(TIPS_TACTICS_SECTION_ID) : heroPage.getElementById(TIPS_SECTION_ID);
+        try {
+            sb.append(String.format(H2, tipsSection.text()));
+        } catch (Exception ex) {
+            System.out.println(tipsSection);
+            ex.printStackTrace();
+        }
         return sb.toString();
     }
 
-    private static String parseItems(Document heroPage) {
+    private static String parseItemsSection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
         Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
         sb.append(String.format(H2, itemsSection.text()));
         return sb.toString();
     }
 
-    private static String parseList(Element list) {
+    private static String parseListToTixtWithLineBreaks(Element list) {
         StringBuilder content = new StringBuilder();
         for (Element child : list.children()) {
             content.append(child.text());
