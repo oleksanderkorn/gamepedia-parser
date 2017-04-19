@@ -3,6 +3,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +33,7 @@ public class Parser {
     private static final String B = "b";
     private static final String UL = "ul";
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
     public static void main(String[] args) {
         String heroAlias = "";
@@ -47,7 +50,7 @@ public class Parser {
             }
             FileUtils.writeStringToFile(new File("src/main/resources/heroTips.txt"), sb.toString(), "UTF-8", false);
         } catch (IOException e) {
-            System.out.println(String.format("Error parsing hero: %s", heroAlias));
+            LOGGER.error(String.format("Error parsing hero: %s", heroAlias));
         }
     }
 
@@ -59,7 +62,7 @@ public class Parser {
             sb.append(parseTipsSection(heroPage));
             sb.append(parseItemsSection(heroPage));
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error(e.getMessage());
         }
 
         return sb.toString();
@@ -86,7 +89,7 @@ public class Parser {
             sb.append(prosConsLabels.get(i).parent().html());
             sb.append(BR);
             Element list = prosConsTexts.get(i);
-            sb.append(parseListToTixtWithLineBreaks(list));
+            sb.append(parseListToTextWithLineBreaks(list));
         }
         return sb.toString();
     }
@@ -96,9 +99,8 @@ public class Parser {
         Element tipsSection = heroPage.getElementById(TIPS_TACTICS_SECTION_ID) != null ? heroPage.getElementById(TIPS_TACTICS_SECTION_ID) : heroPage.getElementById(TIPS_SECTION_ID);
         try {
             sb.append(String.format(H2, tipsSection.text()));
-        } catch (Exception ex) {
-            System.out.println(tipsSection);
-            ex.printStackTrace();
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage());
         }
         return sb.toString();
     }
@@ -110,7 +112,7 @@ public class Parser {
         return sb.toString();
     }
 
-    private static String parseListToTixtWithLineBreaks(Element list) {
+    private static String parseListToTextWithLineBreaks(Element list) {
         StringBuilder content = new StringBuilder();
         for (Element child : list.children()) {
             content.append(child.text());
