@@ -175,7 +175,11 @@ public class Parser {
                 sb.append(String.format(H3, generalLabel.text()));
 
                 Element generalList = generalLabel.parent().nextElementSibling();
-                sb.append(parseListToTextWithLineBreaks(generalList).substring(5));
+                if (generalList.tagName().equals(UL)) {
+                    sb.append(parseListToTextWithLineBreaks(generalList).substring(5));
+                } else {
+                    sb.append(generalList.text());
+                }
             }
         } catch (Exception e) {
             LOGGER.error(String.format("Error parsing tips for page: %s", heroPage.baseUri()));
