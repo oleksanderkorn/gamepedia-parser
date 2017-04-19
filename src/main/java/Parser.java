@@ -44,14 +44,14 @@ public class Parser {
             StringBuilder sb = new StringBuilder();
 
             sb.append("<!doctype html>");
-            sb.append("<html lang=\"en\">");
-            sb.append(" sb.append(\"");
-            sb.append("<meta charset=\"UTF-8\">");
-            sb.append("<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
-            sb.append("<meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">");
-            sb.append("<title>GamePedia</title>");
-            sb.append("</head>");
-            sb.append("<body>");
+            sb.append("\n<html lang=\"en\">");
+            sb.append("\n<head>");
+            sb.append("\n<meta charset=\"UTF-8\">");
+            sb.append("\n<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
+            sb.append("\n<meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">");
+            sb.append("\n<title>GamePedia</title>");
+            sb.append("\n</head>");
+            sb.append("\n<body>");
 
             for (Element element : heroEntryElements) {
                 heroAlias = element.select(A).attr(HREF);
@@ -61,8 +61,8 @@ public class Parser {
                 sb.append(BR);
             }
 
-            sb.append("</body>");
-            sb.append("</html>");
+            sb.append("\n</body>");
+            sb.append("\n</html>");
             FileUtils.writeStringToFile(new File("src/main/resources/heroTips.html"), sb.toString(), "UTF-8", false);
         } catch (IOException e) {
             LOGGER.error(String.format("Error parsing hero: %s", heroAlias));
@@ -77,7 +77,7 @@ public class Parser {
             sb.append(parseTipsSection(heroPage));
             sb.append(parseItemsSection(heroPage));
         } catch (IOException e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error(String.format("Error parsing heroLink: %s", heroLink));
         }
 
         return sb.toString();
