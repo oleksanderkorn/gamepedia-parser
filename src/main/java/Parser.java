@@ -9,29 +9,33 @@ import java.io.IOException;
  * Author: Oleksandr Korniienko
  * Date: 4/5/17
  */
-public class Application {
+public class Parser {
 
     private final static String BASE_URL = "http://dota2.gamepedia.com";
+    private static final String DOTA_2_WIKI = "/Dota_2_Wiki";
     private final static String STRATEGY_TAB_PATH = "/Guide";
-    private final static String H2_SECTION_SELECTOR = "h2 .mw-headline";
     private final static String GAMEPLAY_SECTION_ID = "Gameplay";
     private final static String TIPS_SECTION_ID = "Tips_.26_Tactics";
     private final static String ITEMS_SECTION_ID = "Items";
+    private static final String HERO_ENTRY = ".heroentry";
     private final static String H2 = "<h2>%s</h2>";
     private final static String H3 = "<h3>%s</h3>";
-    private final static String LI = "<li>%s</li>";
-    private final static String UL = "<ul>%s</ul>";
     private static final String BR = "<br/>";
+    private static final String HEADER = "header";
+    private static final String A = "a";
+    private static final String HREF = "href";
+    private static final String B = "b";
+    private static final String UL = "ul";
 
 
     public static void main(String[] args) {
         String heroAlias = "";
         try {
-            Document homePage = Jsoup.connect(BASE_URL + "/Dota_2_Wiki").get();
-            Elements heroEntryElements = homePage.select(".heroentry");
+            Document homePage = Jsoup.connect(BASE_URL + DOTA_2_WIKI).get();
+            Elements heroEntryElements = homePage.select(HERO_ENTRY);
             StringBuilder sb = new StringBuilder();
             for (Element element : heroEntryElements) {
-                heroAlias = element.select("a").attr("href");
+                heroAlias = element.select(A).attr(HREF);
                 String heroTips = parseHeroLink(BASE_URL + heroAlias + STRATEGY_TAB_PATH);
                 sb.append(heroTips);
                 sb.append(BR);
@@ -64,16 +68,16 @@ public class Application {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format(H2, gameplaySection.text()));
 
-        Element gameplayTable = gameplaySection.parent().nextElementSibling();
-        Element playstyle = gameplayTable.getElementsByClass("header").get(0);
-        sb.append(String.format(H3, playstyle.text()));
+        Element gamePlayTable = gameplaySection.parent().nextElementSibling();
+        Element playStyle = gamePlayTable.getElementsByClass(HEADER).get(0);
+        sb.append(String.format(H3, playStyle.text()));
 
-        Element playstyleInfo = playstyle.parent().nextElementSibling();
-        sb.append(playstyleInfo.text());
+        Element playStyleInfo = playStyle.parent().nextElementSibling();
+        sb.append(playStyleInfo.text());
 
-        Element prosConsTable = playstyleInfo.nextElementSibling();
-        Elements prosConsLabels = prosConsTable.getElementsByTag("b");
-        Elements prosConsTexts = prosConsTable.nextElementSibling().getElementsByTag("ul");
+        Element prosConsTable = playStyleInfo.nextElementSibling();
+        Elements prosConsLabels = prosConsTable.getElementsByTag(B);
+        Elements prosConsTexts = prosConsTable.nextElementSibling().getElementsByTag(UL);
         sb.append(BR);
         for (int i = 0; i < 2; i++) {
             sb.append(BR);
@@ -86,19 +90,17 @@ public class Application {
     }
 
     private static String parseTips(Document heroPage) {
-//            //TIPS
-//            Element tipsSection = heroPage.getElementById(TIPS_SECTION_ID);
-//            sb.append(String.format(H2, tipsSection.text()));
-//            sb.append("\n");
-        return "";
+        StringBuilder sb = new StringBuilder();
+        Element tipsSection = heroPage.getElementById(TIPS_SECTION_ID);
+        sb.append(String.format(H2, tipsSection.text()));
+        return sb.toString();
     }
 
     private static String parseItems(Document heroPage) {
-//            //ITEMS
-//            Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
-//            sb.append(String.format(H2, itemsSection.text()));
-//            sb.append("\n");
-        return "";
+        StringBuilder sb = new StringBuilder();
+        Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
+        sb.append(String.format(H2, itemsSection.text()));
+        return sb.toString();
     }
 
     private static String parseList(Element list) {
