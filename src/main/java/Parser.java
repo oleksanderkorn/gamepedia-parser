@@ -102,13 +102,15 @@ public class Parser {
             sb.append(BR);
             for (int i = 0; i < 2; i++) {
                 sb.append(BR);
+                if (i > 0) {
+                    sb.append(BR);
+                }
                 sb.append(prosConsLabels.get(i).parent().html());
-                sb.append(BR);
                 Element list = prosConsTexts.get(i);
                 sb.append(parseListToTextWithLineBreaks(list));
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing page %s", heroPage.baseUri()));
+            LOGGER.error(String.format("Error parsing game play page %s", heroPage.baseUri()));
         }
         return sb.toString();
     }
@@ -133,7 +135,7 @@ public class Parser {
                 sb.append(parseListToTextWithLineBreaks(generalList));
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing page %s", heroPage.baseUri()));
+            LOGGER.error(String.format("Error parsing tips for page: %s", heroPage.baseUri()));
         }
         return sb.toString();
     }
@@ -151,7 +153,7 @@ public class Parser {
             Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
             sb.append(String.format(H2, itemsSection.text()));
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing page %s", heroPage.baseUri()));
+            LOGGER.error(String.format("Error parsing items for page: %s", heroPage.baseUri()));
         }
         return sb.toString();
     }
