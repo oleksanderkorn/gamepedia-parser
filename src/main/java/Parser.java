@@ -1,8 +1,10 @@
+import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URLDecoder;
 
@@ -43,7 +45,7 @@ public class Parser {
                 sb.append(BR);
                 sb.append(BR);
             }
-            System.out.println(sb.toString());
+            FileUtils.writeStringToFile(new File("src/main/resources/heroTips.txt"), sb.toString(), "UTF-8", false);
         } catch (IOException e) {
             System.out.println(String.format("Error parsing hero: %s", heroAlias));
         }
