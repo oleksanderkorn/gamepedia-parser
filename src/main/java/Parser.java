@@ -25,14 +25,18 @@ public class Parser {
     private static final String TIPS_TACTICS_SECTION_ID = "Tips_.26_Tactics";
     private static final String TIPS_SECTION_ID = "Tips";
     private static final String ITEMS_SECTION_ID = "Items";
+    private static final String ABILITIES_SECTION_ID = "Abilities";
     private static final String HERO_ENTRY = ".heroentry";
     private static final String H2 = "<h2>%s</h2>";
     private static final String H3 = "<h3>%s</h3>";
+    private static final String H4 = "<h4>%s</h4>";
+    private static final String H4_TAG = "h4";
     private static final String BR = "<br/>";
     private static final String HEADER = "header";
     private static final String A = "a";
     private static final String HREF = "href";
     private static final String B = "b";
+    private static final String P = "p";
     private static final String UL = "ul";
     private static final String GENERAL = "General";
 
@@ -75,11 +79,50 @@ public class Parser {
             Document heroPage = Jsoup.connect(URLDecoder.decode(heroLink, "UTF-8")).get();
             sb.append(parseGamePlaySection(heroPage));
             sb.append(parseTipsSection(heroPage));
+            sb.append(parseAbilitiesSection(heroPage));
             sb.append(parseItemsSection(heroPage));
         } catch (IOException e) {
             LOGGER.error(String.format("Error parsing heroLink: %s", heroLink));
         }
 
+        return sb.toString();
+    }
+
+    private static String parseAbilitiesSection(Document heroPage) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            Element abilitiesSection = heroPage.getElementById(ABILITIES_SECTION_ID);
+            sb.append(String.format(H2, abilitiesSection.text()));
+
+            Element firstAbility = abilitiesSection.parent().nextElementSibling();
+            sb.append(parseAbility(firstAbility));
+            Element secondAbility = firstAbility.nextElementSibling().nextElementSibling();
+            sb.append(parseAbility(secondAbility.tagName().equals(H4_TAG) ? secondAbility : secondAbility.nextElementSibling()));
+            Element thirdAbility = secondAbility.nextElementSibling().nextElementSibling();
+            sb.append(parseAbility(thirdAbility.tagName().equals(H4_TAG) ? thirdAbility : thirdAbility.nextElementSibling()));
+            Element fourthAbility = thirdAbility.nextElementSibling().nextElementSibling();
+            sb.append(parseAbility(fourthAbility.tagName().equals(H4_TAG) ? fourthAbility : fourthAbility.nextElementSibling()));
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error parsing abilities section on page %s", heroPage.baseUri()));
+        }
+        return sb.toString();
+    }
+
+    private static String parseAbility(Element ability) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            sb.append(String.format(H4, ability.child(0).text()));
+            if (ability.nextElementSibling().tag().getName().equals(P)) {
+                Element paragraph = ability.nextElementSibling();
+                sb.append(paragraph.text());
+                sb.append(parseListToTextWithLineBreaks(paragraph.nextElementSibling()).substring(5));
+            } else {
+                Element abilityList = ability.nextElementSibling();
+                sb.append(parseListToTextWithLineBreaks(abilityList).substring(5));
+            }
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error parsing ability for page %s", ability.baseUri()));
+        }
         return sb.toString();
     }
 
@@ -132,7 +175,7 @@ public class Parser {
                 sb.append(String.format(H3, generalLabel.text()));
 
                 Element generalList = generalLabel.parent().nextElementSibling();
-                sb.append(parseListToTextWithLineBreaks(generalList));
+                sb.append(parseListToTextWithLineBreaks(generalList).substring(5));
             }
         } catch (Exception e) {
             LOGGER.error(String.format("Error parsing tips for page: %s", heroPage.baseUri()));
@@ -141,7 +184,7 @@ public class Parser {
     }
 
     private static Element getNextListElement(Element element) {
-        if (element.nextElementSibling().tag().getName().equals("ul")) {
+        if (element.nextElementSibling().tag().getName().equals(UL)) {
             return element.nextElementSibling();
         }
         return getNextListElement(element.nextElementSibling());
@@ -160,13 +203,14 @@ public class Parser {
 
     private static String parseListToTextWithLineBreaks(Element list) {
         StringBuilder content = new StringBuilder();
-        for (Element child : list.children()) {
-            if (child.getElementsByTag("ul").size() > 0) {
+        for (int i = 0; i < list.children().size(); i++) {
+            Element child = list.child(i);
+            if (child.getElementsByTag(UL).size() > 0) {
                 content.append(BR);
-                for (int i = 0; i < child.textNodes().size(); i++) {
-                    content.append(child.textNodes().get(i).getWholeText());
+                for (int j = 0; j < child.textNodes().size(); j++) {
+                    content.append(child.textNodes().get(j).getWholeText());
                 }
-                Element innerList = child.getElementsByTag("ul").get(0);
+                Element innerList = child.getElementsByTag(UL).get(0);
                 content.append(parseListToTextWithLineBreaks(innerList));
             } else {
                 content.append(BR);
