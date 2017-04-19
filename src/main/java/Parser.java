@@ -16,6 +16,8 @@ import java.net.URLDecoder;
  */
 public class Parser {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
+
     private static final String BASE_URL = "http://dota2.gamepedia.com";
     private static final String DOTA_2_WIKI = "/Dota_2_Wiki";
     private static final String STRATEGY_TAB_PATH = "/Guide";
@@ -32,8 +34,7 @@ public class Parser {
     private static final String HREF = "href";
     private static final String B = "b";
     private static final String UL = "ul";
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
+    private static final String GENERAL = "General";
 
     public static void main(String[] args) {
         String heroAlias = "";
@@ -41,6 +42,17 @@ public class Parser {
             Document homePage = Jsoup.connect(BASE_URL + DOTA_2_WIKI).get();
             Elements heroEntryElements = homePage.select(HERO_ENTRY);
             StringBuilder sb = new StringBuilder();
+
+            sb.append("<!doctype html>");
+            sb.append("<html lang=\"en\">");
+            sb.append(" sb.append(\"");
+            sb.append("<meta charset=\"UTF-8\">");
+            sb.append("<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
+            sb.append("<meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">");
+            sb.append("<title>GamePedia</title>");
+            sb.append("</head>");
+            sb.append("<body>");
+
             for (Element element : heroEntryElements) {
                 heroAlias = element.select(A).attr(HREF);
                 String heroTips = parseHeroLink(BASE_URL + heroAlias + STRATEGY_TAB_PATH);
@@ -48,7 +60,10 @@ public class Parser {
                 sb.append(BR);
                 sb.append(BR);
             }
-            FileUtils.writeStringToFile(new File("src/main/resources/heroTips.txt"), sb.toString(), "UTF-8", false);
+
+            sb.append("</body>");
+            sb.append("</html>");
+            FileUtils.writeStringToFile(new File("src/main/resources/heroTips.html"), sb.toString(), "UTF-8", false);
         } catch (IOException e) {
             LOGGER.error(String.format("Error parsing hero: %s", heroAlias));
         }
@@ -69,27 +84,31 @@ public class Parser {
     }
 
     private static String parseGamePlaySection(Document heroPage) {
-        Element gamePlaySection = heroPage.getElementById(GAME_PLAY_SECTION_ID);
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format(H2, gamePlaySection.text()));
+        try {
+            Element gamePlaySection = heroPage.getElementById(GAME_PLAY_SECTION_ID);
+            sb.append(String.format(H2, gamePlaySection.text()));
 
-        Element gamePlayTable = gamePlaySection.parent().nextElementSibling();
-        Element playStyle = gamePlayTable.getElementsByClass(HEADER).get(0);
-        sb.append(String.format(H3, playStyle.text()));
+            Element gamePlayTable = gamePlaySection.parent().nextElementSibling();
+            Element playStyle = gamePlayTable.getElementsByClass(HEADER).get(0);
+            sb.append(String.format(H3, playStyle.text()));
 
-        Element playStyleInfo = playStyle.parent().nextElementSibling();
-        sb.append(playStyleInfo.text());
+            Element playStyleInfo = playStyle.parent().nextElementSibling();
+            sb.append(playStyleInfo.text());
 
-        Element prosConsTable = playStyleInfo.nextElementSibling();
-        Elements prosConsLabels = prosConsTable.getElementsByTag(B);
-        Elements prosConsTexts = prosConsTable.nextElementSibling().getElementsByTag(UL);
-        sb.append(BR);
-        for (int i = 0; i < 2; i++) {
+            Element prosConsTable = playStyleInfo.nextElementSibling();
+            Elements prosConsLabels = prosConsTable.getElementsByTag(B);
+            Elements prosConsTexts = prosConsTable.nextElementSibling().getElementsByTag(UL);
             sb.append(BR);
-            sb.append(prosConsLabels.get(i).parent().html());
-            sb.append(BR);
-            Element list = prosConsTexts.get(i);
-            sb.append(parseListToTextWithLineBreaks(list));
+            for (int i = 0; i < 2; i++) {
+                sb.append(BR);
+                sb.append(prosConsLabels.get(i).parent().html());
+                sb.append(BR);
+                Element list = prosConsTexts.get(i);
+                sb.append(parseListToTextWithLineBreaks(list));
+            }
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error parsing page %s", heroPage.baseUri()));
         }
         return sb.toString();
     }
@@ -99,24 +118,58 @@ public class Parser {
         Element tipsSection = heroPage.getElementById(TIPS_TACTICS_SECTION_ID) != null ? heroPage.getElementById(TIPS_TACTICS_SECTION_ID) : heroPage.getElementById(TIPS_SECTION_ID);
         try {
             sb.append(String.format(H2, tipsSection.text()));
+
+            Element generalLabel = tipsSection.parent().nextElementSibling().getElementById(GENERAL);
+            if (generalLabel == null) {
+                Element unnamedList = getNextListElement(tipsSection.parent());
+                sb.append(parseListToTextWithLineBreaks(unnamedList));
+                sb.append(BR);
+                generalLabel = unnamedList.nextElementSibling().getElementById(GENERAL);
+            }
+            if (generalLabel != null) {
+                sb.append(String.format(H3, generalLabel.text()));
+
+                Element generalList = generalLabel.parent().nextElementSibling();
+                sb.append(parseListToTextWithLineBreaks(generalList));
+            }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error(String.format("Error parsing page %s", heroPage.baseUri()));
         }
         return sb.toString();
     }
 
+    private static Element getNextListElement(Element element) {
+        if (element.nextElementSibling().tag().getName().equals("ul")) {
+            return element.nextElementSibling();
+        }
+        return getNextListElement(element.nextElementSibling());
+    }
+
     private static String parseItemsSection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
-        Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
-        sb.append(String.format(H2, itemsSection.text()));
+        try {
+            Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
+            sb.append(String.format(H2, itemsSection.text()));
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error parsing page %s", heroPage.baseUri()));
+        }
         return sb.toString();
     }
 
     private static String parseListToTextWithLineBreaks(Element list) {
         StringBuilder content = new StringBuilder();
         for (Element child : list.children()) {
-            content.append(child.text());
-            content.append(BR);
+            if (child.getElementsByTag("ul").size() > 0) {
+                content.append(BR);
+                for (int i = 0; i < child.textNodes().size(); i++) {
+                    content.append(child.textNodes().get(i).getWholeText());
+                }
+                Element innerList = child.getElementsByTag("ul").get(0);
+                content.append(parseListToTextWithLineBreaks(innerList));
+            } else {
+                content.append(BR);
+                content.append(child.text());
+            }
         }
         return content.toString();
     }
