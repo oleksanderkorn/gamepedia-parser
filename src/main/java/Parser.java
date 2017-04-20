@@ -240,10 +240,9 @@ public class Parser {
             Element child = list.child(i);
             if (child.getElementsByTag(UL_TAG).size() > 0) {
                 content.append(BR);
-                for (int j = 0; j < child.textNodes().size(); j++) {
-                    content.append(child.textNodes().get(j).getWholeText());
-                }
                 Element innerList = child.getElementsByTag(UL_TAG).get(0);
+                child.getElementsByTag(UL_TAG).get(0).remove();
+                content.append(child.text());
                 content.append(parseListToTextWithLineBreaks(innerList));
             } else {
                 content.append(BR);
