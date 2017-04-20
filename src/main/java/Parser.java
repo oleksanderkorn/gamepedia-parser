@@ -22,6 +22,7 @@ public class Parser {
     private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
     private static final String BASE_URL = "http://dota2.gamepedia.com";
+    private static final String BASE_URL_RU = "http://dota2-ru.gamepedia.com";
     private static final String DOTA_2_WIKI = "/Dota_2_Wiki";
     private static final String STRATEGY_TAB_PATH = "/Guide";
     private static final String GAME_PLAY_SECTION_ID = "Gameplay";
@@ -285,6 +286,7 @@ public class Parser {
                 content.append(BR);
                 content.append(child.text());
             }
+            content.append(BR);
         }
         return content.toString();
     }
