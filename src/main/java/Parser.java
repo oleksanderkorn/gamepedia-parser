@@ -21,16 +21,29 @@ public class Parser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
-    private static final String BASE_URL = "http://dota2.gamepedia.com";
+    private static final String BASE_URL_EN = "http://dota2.gamepedia.com";
     private static final String BASE_URL_RU = "http://dota2-ru.gamepedia.com";
     private static final String DOTA_2_WIKI = "/Dota_2_Wiki";
     private static final String STRATEGY_TAB_PATH = "/Guide";
-    private static final String GAME_PLAY_SECTION_ID = "Gameplay";
-    private static final String TIPS_TACTICS_SECTION_ID = "Tips_.26_Tactics";
-    private static final String TIPS_SECTION_ID = "Tips";
-    private static final String ITEMS_SECTION_ID = "Items";
-    private static final String ABILITIES_SECTION_ID = "Abilities";
-    private static final String GENERAL = "General";
+
+    private static final String GAME_PLAY_SECTION_ID_EN = "Gameplay";
+    private static final String GAME_PLAY_SECTION_ID_RU = ".D0.98.D0.B3.D1.80.D0.BE.D0.B2.D0.BE.D0.B9_.D0.BF.D1.80.D0.BE.D1.86.D0.B5.D1.81.D1.81";
+
+    private static final String TIPS_TACTICS_SECTION_ID_EN = "Tips_.26_Tactics";
+    private static final String TIPS_TACTICS_SECTION_ID_RU = ".D0.97.D0.B0.D0.BC.D0.B5.D1.82.D0.BA.D0.B8_.D0.B8_.D1.82.D0.B0.D0.BA.D1.82.D0.B8.D0.BA.D0.B8";
+
+    private static final String TIPS_SECTION_ID_EN = "Tips";
+    private static final String TIPS_SECTION_ID_RU = ".D0.97.D0.B0.D0.BC.D0.B5.D1.82.D0.BA.D0.B8_.D0.B8_.D1.82.D0.B0.D0.BA.D1.82.D0.B8.D0.BA.D0.B8";
+
+    private static final String ITEMS_SECTION_ID_EN = "Items";
+    private static final String ITEMS_SECTION_ID_RU = ".D0.9F.D1.80.D0.B5.D0.B4.D0.BC.D0.B5.D1.82.D1.8B";
+
+    private static final String ABILITIES_SECTION_ID_EN = "Abilities";
+    private static final String ABILITIES_SECTION_ID_RU = ".D0.A1.D0.BF.D0.BE.D1.81.D0.BE.D0.B1.D0.BD.D0.BE.D1.81.D1.82.D0.B8";
+
+    private static final String GENERAL_SECTION_ID_EN = "General";
+    private static final String GENERAL_SECTION_ID_RU = ".D0.9E.D1.81.D0.BD.D0.BE.D0.B2.D0.BD.D0.BE.D0.B5";
+
     private static final String HERO_ENTRY = ".heroentry";
     private static final String HEADER = "header";
     private static final String H2 = "<h2>%s</h2>";
@@ -45,35 +58,67 @@ public class Parser {
     private static final String P_TAG = "p";
     private static final String UL_TAG = "ul";
     private static final String HREF = "href";
-    public static final String HEROES_EN_JSON = "src/main/resources/heroes-en.json";
+
+    private static final String HEROES_JSON_EN = "src/main/resources/heroes-en.json";
+    private static final String HEROES_JSON_RU = "src/main/resources/heroes-ru.json";
+
+    private static final String HEROES_HTML_EN = "src/main/resources/heroes-en.html";
+    private static final String HEROES_HTML_RU = "src/main/resources/heroes-ru.html";
+
+    public enum Lang {
+        EN,
+        RU
+    }
+
+    private static Lang currentLanguage;
 
     public static void main(String[] args) {
+        try {
+            currentLanguage = Lang.EN;
+            LOGGER.info("Started parsing tips for {} language.", currentLanguage);
+            parseTips();
+            LOGGER.info("Finished parsing tips for {} language.", currentLanguage);
+
+            currentLanguage = Lang.RU;
+            LOGGER.info("Started parsing tips for {} language.", currentLanguage);
+            parseTips();
+            LOGGER.info("Finished parsing tips for {} language.", currentLanguage);
+        } catch (Exception e) {
+            LOGGER.error("Error parsing tips for.");
+        }
+    }
+
+    private static void parseTips() {
         String heroAliasUrlPath = "";
         String heroAlias;
         try {
-            Document homePage = Jsoup.connect(BASE_URL + DOTA_2_WIKI).get();
+            String baseUrl = currentLanguage.equals(Lang.EN) ? BASE_URL_EN : BASE_URL_RU;
+            Document homePage = Jsoup.connect(baseUrl + DOTA_2_WIKI).get();
             Elements heroEntryElements = homePage.select(HERO_ENTRY);
             StringBuilder fullHeroTips = new StringBuilder();
             Gson gson = new Gson();
-            JsonReader reader = new JsonReader(new FileReader(HEROES_EN_JSON));
+            String jsonFilePath = currentLanguage.equals(Lang.EN) ? HEROES_JSON_EN : HEROES_JSON_RU;
+            JsonReader reader = new JsonReader(new FileReader(jsonFilePath));
             JsonObject heroesJson = gson.fromJson(reader, JsonObject.class);
             for (Element element : heroEntryElements) {
                 heroAliasUrlPath = element.select(A_TAG).attr(HREF);
-                String heroTips = parseHeroLink(BASE_URL + heroAliasUrlPath + STRATEGY_TAB_PATH);
+                String heroTips = parseHeroLink(baseUrl + heroAliasUrlPath + STRATEGY_TAB_PATH);
                 fullHeroTips.append(heroTips).append(BR).append(BR);
                 heroAlias = URLDecoder.decode(heroAliasUrlPath, "UTF-8").replace("'", "").replace("-", "").substring(1).toLowerCase();
                 updateHeroTipsInJson(heroAlias, heroTips, heroesJson);
-                LOGGER.info(String.format("Finished parsing hero: %s", heroAlias));
+                LOGGER.info("Finished parsing hero: {}", heroAlias);
             }
             writeUpdatedJsonToFile(heroesJson);
             writeTipsToHtml(fullHeroTips.toString());
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing hero: %s", heroAliasUrlPath));
+            LOGGER.error("Error parsing hero: {}", heroAliasUrlPath);
         }
     }
 
+
     private static void writeUpdatedJsonToFile(JsonObject heroesJson) {
-        try (Writer writer = new FileWriter(HEROES_EN_JSON)) {
+        String jsonFilePath = currentLanguage.equals(Lang.EN) ? HEROES_JSON_EN : HEROES_JSON_RU;
+        try (Writer writer = new FileWriter(jsonFilePath)) {
             Gson gson = new GsonBuilder()
                     .setPrettyPrinting()
                     .disableHtmlEscaping()
@@ -89,10 +134,10 @@ public class Parser {
             if (heroesJson.get(heroAlias) != null) {
                 heroesJson.get(heroAlias).getAsJsonObject().addProperty("tips", heroTips);
             } else {
-                LOGGER.warn("Cannot find hero %s in the file", heroAlias);
+                LOGGER.warn("Cannot find hero {} in the file", heroAlias);
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error updating json for hero: %s", heroAlias));
+            LOGGER.error("Error updating json for hero: {}", heroAlias);
         }
     }
 
@@ -110,7 +155,8 @@ public class Parser {
         sb.append(heroTips);
         sb.append("\n</body>");
         sb.append("\n</html>");
-        FileUtils.writeStringToFile(new File("src/main/resources/heroTips.html"), sb.toString(), "UTF-8", false);
+        String htmlFilePath = currentLanguage.equals(Lang.EN) ? HEROES_HTML_EN : HEROES_HTML_RU;
+        FileUtils.writeStringToFile(new File(htmlFilePath), sb.toString(), "UTF-8", false);
     }
 
     private static String parseHeroLink(String heroLink) {
@@ -122,7 +168,7 @@ public class Parser {
             sb.append(parseAbilitiesSection(heroPage));
             sb.append(parseItemsSection(heroPage));
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing heroLink: %s", heroLink));
+            LOGGER.error("Error parsing heroLink: {}", heroLink);
         }
 
         return sb.toString();
@@ -131,7 +177,8 @@ public class Parser {
     private static String parseAbilitiesSection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
         try {
-            Element abilitiesSection = heroPage.getElementById(ABILITIES_SECTION_ID);
+            String abilitiesSectionId = currentLanguage.equals(Lang.EN) ? ABILITIES_SECTION_ID_EN : ABILITIES_SECTION_ID_RU;
+            Element abilitiesSection = heroPage.getElementById(abilitiesSectionId);
             sb.append(String.format(H2, abilitiesSection.text()));
 
             Element firstAbility = abilitiesSection.parent().nextElementSibling();
@@ -143,7 +190,7 @@ public class Parser {
             Element fourthAbility = thirdAbility.nextElementSibling().nextElementSibling();
             sb.append(parseAbility(fourthAbility.tagName().equals(H4_TAG) ? fourthAbility : fourthAbility.nextElementSibling()));
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing abilities section on page %s", heroPage.baseUri()));
+            LOGGER.error("Error parsing abilities section on page {}", heroPage.baseUri());
         }
         return sb.toString();
     }
@@ -161,7 +208,7 @@ public class Parser {
                 sb.append(parseListToTextWithLineBreaks(abilityList).substring(5));
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing ability for page %s", ability.baseUri()));
+            LOGGER.error("Error parsing ability for page {}", ability.baseUri());
         }
         return sb.toString();
     }
@@ -169,7 +216,8 @@ public class Parser {
     private static String parseGamePlaySection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
         try {
-            Element gamePlaySection = heroPage.getElementById(GAME_PLAY_SECTION_ID);
+
+            Element gamePlaySection = heroPage.getElementById(currentLanguage.equals(Lang.EN) ? GAME_PLAY_SECTION_ID_EN : GAME_PLAY_SECTION_ID_RU);
             sb.append(String.format(H2, gamePlaySection.text()));
 
             Element gamePlayTable = gamePlaySection.parent().nextElementSibling();
@@ -185,31 +233,34 @@ public class Parser {
             sb.append(BR);
             for (int i = 0; i < 2; i++) {
                 sb.append(BR);
-                if (i > 0) {
-                    sb.append(BR);
-                }
                 sb.append(prosConsLabels.get(i).parent().html());
+                sb.append(BR);
                 Element list = prosConsTexts.get(i);
                 sb.append(parseListToTextWithLineBreaks(list));
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing game play page %s", heroPage.baseUri()));
+            LOGGER.error("Error parsing game play page {}", heroPage.baseUri());
         }
         return sb.toString();
     }
 
     private static String parseTipsSection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
-        Element tipsSection = heroPage.getElementById(TIPS_TACTICS_SECTION_ID) != null ? heroPage.getElementById(TIPS_TACTICS_SECTION_ID) : heroPage.getElementById(TIPS_SECTION_ID);
+        String tipsTacticsId = currentLanguage.equals(Lang.EN) ? TIPS_TACTICS_SECTION_ID_EN : TIPS_TACTICS_SECTION_ID_RU;
+        String tipsId = currentLanguage.equals(Lang.EN) ? TIPS_SECTION_ID_EN : TIPS_SECTION_ID_RU;
+
+        Element tipsSection = heroPage.getElementById(tipsTacticsId) != null ? heroPage.getElementById(tipsTacticsId) : heroPage.getElementById(tipsId);
         try {
             sb.append(String.format(H2, tipsSection.text()));
 
-            Element generalLabel = tipsSection.parent().nextElementSibling().getElementById(GENERAL);
+            String generalSectionId = currentLanguage.equals(Lang.EN) ? GENERAL_SECTION_ID_EN : GENERAL_SECTION_ID_RU;
+
+            Element generalLabel = tipsSection.parent().nextElementSibling().getElementById(generalSectionId);
             if (generalLabel == null) {
                 Element unnamedList = getNextListElement(tipsSection.parent());
                 sb.append(parseListToTextWithLineBreaks(unnamedList));
                 sb.append(BR);
-                generalLabel = unnamedList.nextElementSibling().getElementById(GENERAL);
+                generalLabel = unnamedList.nextElementSibling().getElementById(generalSectionId);
             }
             if (generalLabel != null) {
                 sb.append(String.format(H3, generalLabel.text()));
@@ -222,7 +273,7 @@ public class Parser {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing tips for page: %s", heroPage.baseUri()));
+            LOGGER.error("Error parsing tips for page: {}", heroPage.baseUri());
         }
         return sb.toString();
     }
@@ -237,14 +288,12 @@ public class Parser {
     private static String parseItemsSection(Document heroPage) {
         StringBuilder sb = new StringBuilder();
         try {
-            Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
+            String itemsSectionId = currentLanguage.equals(Lang.EN) ? ITEMS_SECTION_ID_EN : ITEMS_SECTION_ID_RU;
+            Element itemsSection = heroPage.getElementById(itemsSectionId);
             sb.append(String.format(H2, itemsSection.text()));
-
             sb.append(parseAvailableItems(itemsSection.parent().nextElementSibling()));
-
-
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing items for page: %s", heroPage.baseUri()));
+            LOGGER.error("Error parsing items for page: {}", heroPage.baseUri());
         }
         return sb.toString();
     }
@@ -259,6 +308,7 @@ public class Parser {
                     }
                     sb.append(String.format(B,section.text()));
                 } else if (section.tagName().equals(UL_TAG)) {
+                    sb.append(BR);
                     sb.append(parseListToTextWithLineBreaks(section));
                     sb.append(BR);
                 }
@@ -267,7 +317,7 @@ public class Parser {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error(String.format("Error parsing items for page: %s", section.baseUri()));
+            LOGGER.error("Error parsing items for page: {}", section.baseUri());
         }
         return sb.toString();
     }
