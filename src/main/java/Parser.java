@@ -26,19 +26,21 @@ public class Parser {
     private static final String TIPS_SECTION_ID = "Tips";
     private static final String ITEMS_SECTION_ID = "Items";
     private static final String ABILITIES_SECTION_ID = "Abilities";
+    private static final String GENERAL = "General";
     private static final String HERO_ENTRY = ".heroentry";
+    private static final String HEADER = "header";
     private static final String H2 = "<h2>%s</h2>";
     private static final String H3 = "<h3>%s</h3>";
     private static final String H4 = "<h4>%s</h4>";
-    private static final String H4_TAG = "h4";
+    private static final String B = "<b>%s</b>";
     private static final String BR = "<br/>";
-    private static final String HEADER = "header";
-    private static final String A = "a";
+    private static final String H4_TAG = "h4";
+    private static final String H2_TAG = "h2";
+    private static final String A_TAG = "a";
+    private static final String B_TAG = "b";
+    private static final String P_TAG = "p";
+    private static final String UL_TAG = "ul";
     private static final String HREF = "href";
-    private static final String B = "b";
-    private static final String P = "p";
-    private static final String UL = "ul";
-    private static final String GENERAL = "General";
 
     public static void main(String[] args) {
         String heroAlias = "";
@@ -58,7 +60,7 @@ public class Parser {
             sb.append("\n<body>");
 
             for (Element element : heroEntryElements) {
-                heroAlias = element.select(A).attr(HREF);
+                heroAlias = element.select(A_TAG).attr(HREF);
                 String heroTips = parseHeroLink(BASE_URL + heroAlias + STRATEGY_TAB_PATH);
                 sb.append(heroTips);
                 sb.append(BR);
@@ -112,7 +114,7 @@ public class Parser {
         StringBuilder sb = new StringBuilder();
         try {
             sb.append(String.format(H4, ability.child(0).text()));
-            if (ability.nextElementSibling().tag().getName().equals(P)) {
+            if (ability.nextElementSibling().tag().getName().equals(P_TAG)) {
                 Element paragraph = ability.nextElementSibling();
                 sb.append(paragraph.text());
                 sb.append(parseListToTextWithLineBreaks(paragraph.nextElementSibling()).substring(5));
@@ -140,8 +142,8 @@ public class Parser {
             sb.append(playStyleInfo.text());
 
             Element prosConsTable = playStyleInfo.nextElementSibling();
-            Elements prosConsLabels = prosConsTable.getElementsByTag(B);
-            Elements prosConsTexts = prosConsTable.nextElementSibling().getElementsByTag(UL);
+            Elements prosConsLabels = prosConsTable.getElementsByTag(B_TAG);
+            Elements prosConsTexts = prosConsTable.nextElementSibling().getElementsByTag(UL_TAG);
             sb.append(BR);
             for (int i = 0; i < 2; i++) {
                 sb.append(BR);
@@ -175,7 +177,7 @@ public class Parser {
                 sb.append(String.format(H3, generalLabel.text()));
 
                 Element generalList = generalLabel.parent().nextElementSibling();
-                if (generalList.tagName().equals(UL)) {
+                if (generalList.tagName().equals(UL_TAG)) {
                     sb.append(parseListToTextWithLineBreaks(generalList).substring(5));
                 } else {
                     sb.append(generalList.text());
@@ -188,7 +190,7 @@ public class Parser {
     }
 
     private static Element getNextListElement(Element element) {
-        if (element.nextElementSibling().tag().getName().equals(UL)) {
+        if (element.nextElementSibling().tag().getName().equals(UL_TAG)) {
             return element.nextElementSibling();
         }
         return getNextListElement(element.nextElementSibling());
@@ -199,8 +201,35 @@ public class Parser {
         try {
             Element itemsSection = heroPage.getElementById(ITEMS_SECTION_ID);
             sb.append(String.format(H2, itemsSection.text()));
+
+            sb.append(parseAvailableItems(itemsSection.parent().nextElementSibling()));
+
+
         } catch (Exception e) {
             LOGGER.error(String.format("Error parsing items for page: %s", heroPage.baseUri()));
+        }
+        return sb.toString();
+    }
+
+    private static String parseAvailableItems(Element section) {
+        StringBuilder sb = new StringBuilder();
+        try {
+            if (section != null) {
+                if (section.tagName().equals(P_TAG)) {
+                    if (!section.previousElementSibling().tagName().equals(H2_TAG)) {
+                        sb.append(BR);
+                    }
+                    sb.append(String.format(B,section.text()));
+                } else if (section.tagName().equals(UL_TAG)) {
+                    sb.append(parseListToTextWithLineBreaks(section));
+                    sb.append(BR);
+                }
+                if (section.nextElementSibling() != null) {
+                    sb.append(parseAvailableItems(section.nextElementSibling()));
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error parsing items for page: %s", section.baseUri()));
         }
         return sb.toString();
     }
@@ -209,12 +238,12 @@ public class Parser {
         StringBuilder content = new StringBuilder();
         for (int i = 0; i < list.children().size(); i++) {
             Element child = list.child(i);
-            if (child.getElementsByTag(UL).size() > 0) {
+            if (child.getElementsByTag(UL_TAG).size() > 0) {
                 content.append(BR);
                 for (int j = 0; j < child.textNodes().size(); j++) {
                     content.append(child.textNodes().get(j).getWholeText());
                 }
-                Element innerList = child.getElementsByTag(UL).get(0);
+                Element innerList = child.getElementsByTag(UL_TAG).get(0);
                 content.append(parseListToTextWithLineBreaks(innerList));
             } else {
                 content.append(BR);
