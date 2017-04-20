@@ -87,6 +87,8 @@ public class Parser {
         try {
             if (heroesJson.get(heroAlias) != null) {
                 heroesJson.get(heroAlias).getAsJsonObject().addProperty("tips", heroTips);
+            } else {
+                LOGGER.warn("Cannot find hero %s in the file", heroAlias);
             }
         } catch (Exception e) {
             LOGGER.error(String.format("Error updating json for hero: %s", heroAlias));
