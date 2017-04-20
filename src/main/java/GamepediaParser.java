@@ -79,6 +79,7 @@ public class GamepediaParser {
             parseTips();
             LOGGER.info("Finished parsing tips for {} language.", currentLanguage);
 
+            //TODO Maybe someday russian tips will be ready to be parsed, but now they are dniwe.
             currentLanguage = Lang.RU;
             LOGGER.info("Started parsing tips for {} language.", currentLanguage);
             parseTips();
