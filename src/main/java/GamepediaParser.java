@@ -17,9 +17,9 @@ import java.net.URLDecoder;
  * Author: Oleksandr Korniienko
  * Date: 4/5/17
  */
-public class Parser {
+public class GamepediaParser {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GamepediaParser.class);
 
     private static final String BASE_URL_EN = "http://dota2.gamepedia.com";
     private static final String BASE_URL_RU = "http://dota2-ru.gamepedia.com";
