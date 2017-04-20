@@ -1,3 +1,7 @@
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonReader;
 import org.apache.commons.io.FileUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -6,8 +10,7 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.URLDecoder;
 
 /**
@@ -41,38 +44,70 @@ public class Parser {
     private static final String P_TAG = "p";
     private static final String UL_TAG = "ul";
     private static final String HREF = "href";
+    public static final String HEROES_EN_JSON = "src/main/resources/heroes-en.json";
 
     public static void main(String[] args) {
-        String heroAlias = "";
+        String heroAliasUrlPath = "";
+        String heroAlias;
         try {
             Document homePage = Jsoup.connect(BASE_URL + DOTA_2_WIKI).get();
             Elements heroEntryElements = homePage.select(HERO_ENTRY);
-            StringBuilder sb = new StringBuilder();
-
-            sb.append("<!doctype html>");
-            sb.append("\n<html lang=\"en\">");
-            sb.append("\n<head>");
-            sb.append("\n<meta charset=\"UTF-8\">");
-            sb.append("\n<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
-            sb.append("\n<meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">");
-            sb.append("\n<title>GamePedia</title>");
-            sb.append("\n</head>");
-            sb.append("\n<body>");
-
+            StringBuilder fullHeroTips = new StringBuilder();
+            Gson gson = new Gson();
+            JsonReader reader = new JsonReader(new FileReader(HEROES_EN_JSON));
+            JsonObject heroesJson = gson.fromJson(reader, JsonObject.class);
             for (Element element : heroEntryElements) {
-                heroAlias = element.select(A_TAG).attr(HREF);
-                String heroTips = parseHeroLink(BASE_URL + heroAlias + STRATEGY_TAB_PATH);
-                sb.append(heroTips);
-                sb.append(BR);
-                sb.append(BR);
+                heroAliasUrlPath = element.select(A_TAG).attr(HREF);
+                String heroTips = parseHeroLink(BASE_URL + heroAliasUrlPath + STRATEGY_TAB_PATH);
+                fullHeroTips.append(heroTips).append(BR).append(BR);
+                heroAlias = URLDecoder.decode(heroAliasUrlPath, "UTF-8").replace("'", "").replace("-", "").substring(1).toLowerCase();
+                updateHeroTipsInJson(heroAlias, heroTips, heroesJson);
+                LOGGER.info(String.format("Finished parsing hero: %s", heroAlias));
             }
-
-            sb.append("\n</body>");
-            sb.append("\n</html>");
-            FileUtils.writeStringToFile(new File("src/main/resources/heroTips.html"), sb.toString(), "UTF-8", false);
-        } catch (IOException e) {
-            LOGGER.error(String.format("Error parsing hero: %s", heroAlias));
+            writeUpdatedJsonToFile(heroesJson);
+            writeTipsToHtml(fullHeroTips.toString());
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error parsing hero: %s", heroAliasUrlPath));
         }
+    }
+
+    private static void writeUpdatedJsonToFile(JsonObject heroesJson) {
+        try (Writer writer = new FileWriter(HEROES_EN_JSON)) {
+            Gson gson = new GsonBuilder()
+                    .setPrettyPrinting()
+                    .disableHtmlEscaping()
+                    .create();
+            gson.toJson(heroesJson, writer);
+        } catch (IOException e) {
+            LOGGER.error("Error writing json file.");
+        }
+    }
+
+    private static void updateHeroTipsInJson(String heroAlias, String heroTips, JsonObject heroesJson) {
+        try {
+            if (heroesJson.get(heroAlias) != null) {
+                heroesJson.get(heroAlias).getAsJsonObject().addProperty("tips", heroTips);
+            }
+        } catch (Exception e) {
+            LOGGER.error(String.format("Error updating json for hero: %s", heroAlias));
+        }
+    }
+
+    private static void writeTipsToHtml(String heroTips) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<!doctype html>");
+        sb.append("\n<html lang=\"en\">");
+        sb.append("\n<head>");
+        sb.append("\n<meta charset=\"UTF-8\">");
+        sb.append("\n<meta name=\"viewport\" content=\"width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0\">");
+        sb.append("\n<meta http-equiv=\"X-UA-Compatible\" content=\"ie=edge\">");
+        sb.append("\n<title>GamePedia</title>");
+        sb.append("\n</head>");
+        sb.append("\n<body>");
+        sb.append(heroTips);
+        sb.append("\n</body>");
+        sb.append("\n</html>");
+        FileUtils.writeStringToFile(new File("src/main/resources/heroTips.html"), sb.toString(), "UTF-8", false);
     }
 
     private static String parseHeroLink(String heroLink) {
@@ -83,7 +118,7 @@ public class Parser {
             sb.append(parseTipsSection(heroPage));
             sb.append(parseAbilitiesSection(heroPage));
             sb.append(parseItemsSection(heroPage));
-        } catch (IOException e) {
+        } catch (Exception e) {
             LOGGER.error(String.format("Error parsing heroLink: %s", heroLink));
         }
 
